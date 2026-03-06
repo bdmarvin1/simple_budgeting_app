@@ -1,0 +1,75 @@
+{% extends "budget/base.html" %}
+
+{% block content %}
+<div class="mb-8">
+    <h2 class="text-2xl font-bold text-zinc-800">Time Tracking</h2>
+    <p class="text-zinc-500 text-sm">Log hours and monitor Average Hourly Rate (AHR).</p>
+</div>
+
+<!-- Project Stats (OOB target) -->
+<div id="project-stats-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+    {% include "budget/partials/project_time_stats.html" %}
+</div>
+
+<!-- Log Time Form -->
+<div class="bg-white p-6 rounded-2xl border border-zinc-200 shadow-sm mb-8">
+    <h3 class="text-lg font-bold text-zinc-800 mb-6">Log Hours</h3>
+    <form hx-post="{{ url_for('budget.add_time_entry') }}"
+          hx-target="#time-entry-list-container"
+          hx-swap="innerHTML"
+          hx-on::after-request="if(event.detail.successful) this.reset()"
+          class="space-y-4">
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <label class="block text-sm font-medium text-zinc-700 mb-1">Project</label>
+                <select name="project_id" required class="w-full px-4 py-3 rounded-xl border border-zinc-300 focus:ring-2 focus:ring-zinc-500 outline-none">
+                    {% for project in projects %}
+                    <option value="{{ project.id }}">{{ project.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-zinc-700 mb-1">Hours (Decimal)</label>
+                <input type="number" step="0.25" name="hours" required placeholder="1.5"
+                       class="w-full px-4 py-3 rounded-xl border border-zinc-300 focus:ring-2 focus:ring-zinc-500 outline-none">
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <label class="block text-sm font-medium text-zinc-700 mb-1">Date</label>
+                <input type="date" name="date" required value="{{ now_date }}"
+                       class="w-full px-4 py-3 rounded-xl border border-zinc-300 focus:ring-2 focus:ring-zinc-500 outline-none">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-zinc-700 mb-1">Description</label>
+                <input type="text" name="description" placeholder="What did you do?"
+                       class="w-full px-4 py-3 rounded-xl border border-zinc-300 focus:ring-2 focus:ring-zinc-500 outline-none">
+            </div>
+        </div>
+
+        <button type="submit"
+                class="w-full bg-zinc-800 text-white font-semibold py-3 rounded-xl hover:bg-zinc-700 transition flex justify-center items-center">
+            <span class="htmx-indicator mr-2">
+                <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+            </span>
+            Log Time
+        </button>
+    </form>
+</div>
+
+<!-- Time Log Ledger -->
+<div class="bg-white rounded-2xl border border-zinc-200 shadow-sm overflow-hidden">
+    <div class="px-6 py-4 border-b border-zinc-100">
+        <h3 class="text-lg font-bold text-zinc-800">Recent Time Entries</h3>
+    </div>
+
+    <div id="time-entry-list-container">
+        {% include "budget/partials/time_entry_list.html" %}
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,198 @@
+{% extends "budget/base.html" %}
+
+{% block content %}
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+    <!-- AGI Gauge -->
+    <div id="agi-gauge-container">
+        {% include "budget/partials/agi_gauge.html" %}
+    </div>
+
+    <!-- Next Deadline -->
+    <div class="bg-zinc-900 text-white p-6 rounded-2xl shadow-sm">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-zinc-400 text-xs font-bold uppercase tracking-widest">Upcoming Deadlines</h3>
+            <span class="text-[10px] bg-zinc-800 text-zinc-400 px-2 py-0.5 rounded">2026</span>
+        </div>
+        <ul class="space-y-3">
+            {% for deadline in deadlines[:2] %}
+            <li class="flex justify-between items-center text-sm">
+                <span class="text-zinc-400">{{ deadline.date }}</span>
+                <span class="font-medium">{{ deadline.event }}</span>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+
+    <!-- Delivery Margin Summary -->
+    <div class="bg-white p-6 rounded-2xl border border-zinc-200 shadow-sm">
+        <h3 class="text-zinc-400 text-xs font-bold uppercase tracking-widest mb-4">Avg. Delivery Margin</h3>
+        <div class="flex items-end space-x-2">
+            {% set total_margin = 0 %}
+            {% if projects %}
+                {% for p in projects %}
+                    {# This is a simplified avg calculation for the gauge #}
+                    {% set total_margin = total_margin + project_stats[p.id].margin %}
+                {% endfor %}
+                {% set avg_margin = total_margin / projects|length %}
+            {% else %}
+                {% set avg_margin = 0 %}
+            {% endif %}
+            <span class="text-3xl font-black text-zinc-800">{{ "%.1f"|format(avg_margin) }}%</span>
+            <span class="text-xs {{ 'text-emerald-600' if avg_margin >= 50 else 'text-red-500' }} font-bold mb-1">
+                {{ 'Healthy' if avg_margin >= 50 else 'At Risk' }}
+            </span>
+        </div>
+        <div class="w-full bg-zinc-100 h-1.5 rounded-full mt-4 overflow-hidden">
+            <div class="h-full {{ 'bg-emerald-500' if avg_margin >= 50 else 'bg-red-500' }}" style="width: {{ avg_margin if avg_margin <= 100 else 100 }}%"></div>
+        </div>
+    </div>
+</div>
+
+<!-- 13-Week Forecast Chart -->
+<div class="bg-white p-6 rounded-2xl border border-zinc-200 shadow-sm mb-8">
+    <h3 class="text-lg font-bold text-zinc-800 mb-6">13-Week Cash Forecast</h3>
+    <div class="h-64">
+        <canvas id="forecastChart"></canvas>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+    <!-- Log Transaction -->
+    <div class="bg-white p-6 rounded-2xl border border-zinc-200 shadow-sm">
+        <h3 class="text-lg font-bold text-zinc-800 mb-6">Log Transaction</h3>
+        <form hx-post="{{ url_for('budget.add_transaction') }}"
+              hx-target="#transaction-list-container"
+              hx-swap="innerHTML"
+              hx-on::after-request="if(event.detail.successful) this.reset()"
+              class="space-y-4">
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-zinc-700 mb-1">Description</label>
+                    <input type="text" name="description" required placeholder="e.g. Client Payment"
+                           class="w-full px-4 py-3 rounded-xl border border-zinc-300 focus:ring-2 focus:ring-zinc-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-zinc-700 mb-1">Amount</label>
+                    <input type="number" step="0.01" name="amount" required placeholder="0.00"
+                           class="w-full px-4 py-3 rounded-xl border border-zinc-300 focus:ring-2 focus:ring-zinc-500 outline-none">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-zinc-700 mb-1">Date</label>
+                    <input type="date" name="date" required value="{{ now_date }}"
+                           class="w-full px-4 py-3 rounded-xl border border-zinc-300 focus:ring-2 focus:ring-zinc-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-zinc-700 mb-1">Category</label>
+                    <select name="category" class="w-full px-4 py-3 rounded-xl border border-zinc-300 focus:ring-2 focus:ring-zinc-500 outline-none">
+                        <option value="Income">Income</option>
+                        <option value="Software">Software (SaaS)</option>
+                        <option value="Payroll">Payroll</option>
+                        <option value="Marketing">Marketing</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-zinc-700 mb-1">Link to Projects</label>
+                <div class="grid grid-cols-2 gap-2 p-3 bg-zinc-50 rounded-xl border border-zinc-200 max-h-32 overflow-y-auto">
+                    {% for project in projects %}
+                    <label class="flex items-center space-x-2 text-xs text-zinc-600 cursor-pointer">
+                        <input type="checkbox" name="project_ids" value="{{ project.id }}" class="rounded border-zinc-300 text-zinc-900 focus:ring-zinc-500">
+                        <span class="truncate">{{ project.name }}</span>
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="flex items-center space-x-3 py-2">
+                <input type="checkbox" id="is_pass_through" name="is_pass_through"
+                       class="w-5 h-5 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-500">
+                <label for="is_pass_through" class="text-sm font-medium text-zinc-700">Pass-Through (Subtract from AGI)</label>
+            </div>
+
+            <button type="submit"
+                    class="w-full bg-zinc-800 text-white font-semibold py-3 rounded-xl hover:bg-zinc-700 transition flex justify-center items-center">
+                <span class="htmx-indicator mr-2">
+                    <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                </span>
+                Save Transaction
+            </button>
+        </form>
+    </div>
+
+    <!-- Ledger -->
+    <div class="bg-white rounded-2xl border border-zinc-200 shadow-sm overflow-hidden h-fit">
+        <div class="px-6 py-4 border-b border-zinc-100">
+            <h3 class="text-lg font-bold text-zinc-800">Recent Transactions</h3>
+        </div>
+        <div id="transaction-list-container">
+            {% include "budget/partials/transaction_list.html" %}
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const ctx = document.getElementById('forecastChart').getContext('2d');
+        const forecastData = {{ forecast_data|tojson }};
+
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: forecastData.labels,
+                datasets: [
+                    {
+                        label: 'Projected Income',
+                        data: forecastData.income,
+                        borderColor: '#10b981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    },
+                    {
+                        label: 'Projected Expenses',
+                        data: forecastData.expenses,
+                        borderColor: '#ef4444',
+                        backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            usePointStyle: true,
+                            boxWidth: 6,
+                            font: { size: 10, weight: '600' }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: '#f4f4f5' },
+                        ticks: { font: { size: 10 } }
+                    },
+                    x: {
+                        grid: { display: false },
+                        ticks: { font: { size: 10 } }
+                    }
+                }
+            }
+        });
+    });
+</script>
+{% endblock %}

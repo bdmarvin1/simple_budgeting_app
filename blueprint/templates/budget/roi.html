@@ -1,0 +1,65 @@
+{% extends "budget/base.html" %}
+
+{% block content %}
+<div class="mb-8">
+    <h2 class="text-2xl font-bold text-zinc-800">Software ROI</h2>
+    <p class="text-zinc-500 text-sm">Analyze SaaS efficiency vs. the projects they support.</p>
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    {% for item in roi_data %}
+    <div class="bg-white p-6 rounded-2xl border border-zinc-200 shadow-sm flex flex-col h-full">
+        <div class="flex justify-between items-start mb-4">
+            <div>
+                <h4 class="font-bold text-zinc-800">{{ item.software.description }}</h4>
+                <p class="text-xs text-zinc-400">Cost: ${{ "%.2f"|format(item.software.amount|abs) }}/{{ item.software.frequency|lower }}</p>
+            </div>
+            <div class="text-right">
+                <span class="text-[10px] font-black px-2 py-0.5 rounded bg-zinc-100 text-zinc-500 uppercase tracking-widest">Efficiency</span>
+                <p class="text-lg font-black text-zinc-800">{{ "%.1f"|format(item.efficiency) }}x</p>
+            </div>
+        </div>
+
+        <div class="flex-grow">
+            <p class="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider mb-2">Linked Projects ({{ item.linked_projects|length }})</p>
+            <div class="flex flex-wrap gap-2">
+                {% for project in item.linked_projects %}
+                <span class="text-[10px] bg-zinc-50 border border-zinc-100 px-2 py-1 rounded-md text-zinc-600 font-medium">{{ project.name }}</span>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="mt-6 pt-4 border-t border-zinc-50 flex justify-between items-center">
+            <span class="text-xs text-zinc-400">Supported AGI:</span>
+            <span class="text-xs font-bold text-emerald-600">${{ "%.2f"|format(item.total_supported_agi) }}</span>
+        </div>
+
+        <div class="mt-4 w-full bg-zinc-100 h-1.5 rounded-full overflow-hidden">
+            {# Efficiency visualization: 10x is considered 'Full' #}
+            <div class="h-full bg-zinc-800" style="width: {{ (item.efficiency * 10) if (item.efficiency * 10) <= 100 else 100 }}%"></div>
+        </div>
+    </div>
+    {% else %}
+    <div class="col-span-full text-center py-12 bg-zinc-100 rounded-2xl border-2 border-dashed border-zinc-300">
+        <p class="text-zinc-500">No software items found. Tag recurring items as 'Software' to see ROI.</p>
+    </div>
+    {% endfor %}
+</div>
+
+<div class="mt-12 bg-zinc-900 text-white p-8 rounded-3xl shadow-xl">
+    <h3 class="text-xl font-bold mb-4">How it's calculated</h3>
+    <p class="text-zinc-400 text-sm leading-relaxed mb-4">
+        Efficiency is calculated by dividing the <span class="text-white font-semibold">Total Monthly Retainers</span> of all linked projects by the <span class="text-white font-semibold">Cost of the Software</span>.
+    </p>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="p-4 bg-zinc-800 rounded-2xl">
+            <p class="text-xs font-bold text-zinc-500 uppercase mb-1">High Efficiency (>10x)</p>
+            <p class="text-sm text-zinc-300">Essential tools that support multiple high-value projects.</p>
+        </div>
+        <div class="p-4 bg-zinc-800 rounded-2xl">
+            <p class="text-xs font-bold text-zinc-500 uppercase mb-1">Low Efficiency (<2x)</p>
+            <p class="text-sm text-zinc-300">Tools that may be cutting into your margins too deeply.</p>
+        </div>
+    </div>
+</div>
+{% endblock %}

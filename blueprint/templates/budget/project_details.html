@@ -1,0 +1,153 @@
+{% extends "budget/base.html" %}
+
+{% block title %}{{ project.name }} - Details{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-6">
+    <!-- Header & Navigation -->
+    <div class="flex items-center justify-between">
+        <div>
+            <a href="{{ url_for('budget.projects') }}" class="text-zinc-500 hover:text-zinc-800 flex items-center gap-1 text-sm font-medium transition">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
+                Back to Projects
+            </a>
+            <h1 class="text-3xl font-extrabold text-zinc-900 mt-2">{{ project.name }}</h1>
+        </div>
+        <div class="flex items-center gap-3">
+            <span class="px-3 py-1 rounded-full text-xs font-bold tracking-wider uppercase
+                {% if project.status == 'ACTIVE' %}bg-emerald-100 text-emerald-700{% elif project.status == 'COMPLETED' %}bg-zinc-100 text-zinc-600{% else %}bg-red-100 text-red-700{% endif %}">
+                {{ project.status }}
+            </span>
+        </div>
+    </div>
+
+    <!-- Stats Overview -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-zinc-100">
+            <p class="text-sm font-medium text-zinc-500 mb-1">Total Income</p>
+            <p class="text-2xl font-bold text-emerald-600">+{{ "${:,.2f}".format(total_income) }}</p>
+        </div>
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-zinc-100">
+            <p class="text-sm font-medium text-zinc-500 mb-1">Total Expenses</p>
+            <p class="text-2xl font-bold text-zinc-900">-{{ "${:,.2f}".format(total_expenses) }}</p>
+        </div>
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-zinc-100">
+            <p class="text-sm font-medium text-zinc-500 mb-1">Net Margin</p>
+            <p class="text-2xl font-bold {% if margin > 30 %}text-emerald-600{% elif margin > 15 %}text-amber-600{% else %}text-red-600{% endif %}">
+                {{ "{:,.1f}%".format(margin) }}
+            </p>
+            <p class="text-xs text-zinc-400 mt-1">Net: {{ "${:,.2f}".format(net_total) }}</p>
+        </div>
+    </div>
+
+    <!-- Details and Edit Form -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- Settings -->
+        <div class="bg-white rounded-2xl shadow-sm border border-zinc-100 overflow-hidden">
+            <div class="px-6 py-4 border-b border-zinc-100 bg-zinc-50">
+                <h3 class="font-bold text-zinc-800">Project Settings</h3>
+            </div>
+            <form action="{{ url_for('budget.update_project', id=project.id) }}" method="POST" class="p-6 space-y-4">
+                <div>
+                    <label class="block text-xs font-bold uppercase text-zinc-500 mb-1">Project Name</label>
+                    <input type="text" name="name" value="{{ project.name }}" required
+                           class="w-full px-4 py-2 bg-zinc-50 border border-zinc-200 rounded-xl focus:ring-2 focus:ring-zinc-900 outline-none transition text-sm">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold uppercase text-zinc-500 mb-1">Monthly Retainer</label>
+                        <input type="number" step="0.01" name="monthly_retainer" value="{{ project.monthly_retainer }}" required
+                               class="w-full px-4 py-2 bg-zinc-50 border border-zinc-200 rounded-xl focus:ring-2 focus:ring-zinc-900 outline-none transition text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold uppercase text-zinc-500 mb-1">Cost Rate (/hr)</label>
+                        <input type="number" step="0.01" name="cost_rate" value="{{ project.cost_rate }}" required
+                               class="w-full px-4 py-2 bg-zinc-50 border border-zinc-200 rounded-xl focus:ring-2 focus:ring-zinc-900 outline-none transition text-sm">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold uppercase text-zinc-500 mb-1">Status</label>
+                    <select name="status" class="w-full px-4 py-2 bg-zinc-50 border border-zinc-200 rounded-xl focus:ring-2 focus:ring-zinc-900 outline-none transition text-sm">
+                        <option value="ACTIVE" {% if project.status == 'ACTIVE' %}selected{% endif %}>Active</option>
+                        <option value="COMPLETED" {% if project.status == 'COMPLETED' %}selected{% endif %}>Completed</option>
+                        <option value="CANCELLED" {% if project.status == 'CANCELLED' %}selected{% endif %}>Cancelled</option>
+                    </select>
+                </div>
+                <button type="submit" class="w-full py-3 bg-zinc-900 text-white font-bold rounded-xl hover:bg-zinc-800 transition shadow-lg shadow-zinc-200">
+                    Save Changes
+                </button>
+            </form>
+        </div>
+
+        <!-- Recurring/Projected -->
+        <div class="bg-white rounded-2xl shadow-sm border border-zinc-100 overflow-hidden text-sm">
+            <div class="px-6 py-4 border-b border-zinc-100 bg-zinc-50 flex justify-between items-center">
+                <h3 class="font-bold text-zinc-800">Recurring Items</h3>
+                <a href="{{ url_for('budget.recurring') }}" class="text-xs text-zinc-500 hover:text-zinc-800 font-medium">Manage All</a>
+            </div>
+            <div class="p-6 space-y-3">
+                {% for item in recurring_items %}
+                <div class="flex items-center justify-between p-3 bg-zinc-50 rounded-xl border border-zinc-100">
+                    <div>
+                        <div class="font-bold text-zinc-800">{{ item.description }}</div>
+                        <div class="text-xs text-zinc-500">{{ item.frequency }} • Next: {{ item.next_date.strftime('%b %d') }}</div>
+                    </div>
+                    <div class="font-bold {% if item.category == 'Income' %}text-emerald-600{% else %}text-zinc-900{% endif %}">
+                        {% if item.category == 'Income' %}+{% else %}-{% endif %}{{ "${:,.2f}".format(item.amount|abs) }}
+                    </div>
+                </div>
+                {% else %}
+                <p class="text-zinc-400 italic text-center py-4">No recurring items linked.</p>
+                {% endfor %}
+                <p class="text-[10px] text-zinc-400 leading-tight">
+                    * Recurring items are templates. They automatically populate the ledger on their due date.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Historical Ledger -->
+    <div class="bg-white rounded-2xl shadow-sm border border-zinc-100 overflow-hidden">
+        <div class="px-6 py-4 border-b border-zinc-100 bg-zinc-50">
+            <h3 class="font-bold text-zinc-800">Project Transaction History</h3>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+                <thead class="bg-zinc-50 text-zinc-500 text-xs uppercase tracking-wider">
+                    <tr>
+                        <th class="px-6 py-3 font-semibold">Date</th>
+                        <th class="px-6 py-3 font-semibold">Description</th>
+                        <th class="px-6 py-3 font-semibold">Category</th>
+                        <th class="px-6 py-3 font-semibold text-right">Amount</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-zinc-100 text-sm">
+                    {% for t in project.transactions|sort(attribute='date', reverse=True) %}
+                    <tr class="hover:bg-zinc-50 transition">
+                        <td class="px-6 py-4 text-zinc-500">{{ t.date.strftime('%b %d, %Y') }}</td>
+                        <td class="px-6 py-4">
+                            <div class="font-medium text-zinc-800">{{ t.description }}</div>
+                            {% if t.is_pass_through %}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-700">Pass-Through</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="text-zinc-500">{{ t.category }}</span>
+                        </td>
+                        <td class="px-6 py-4 text-right font-bold {% if t.category == 'Income' %}text-emerald-600{% else %}text-zinc-900{% endif %}">
+                            {% if t.category == 'Income' %}+{% else %}-{% endif %}{{ "${:,.2f}".format(t.amount|abs) }}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="4" class="px-6 py-12 text-center text-zinc-400 italic">No historical transactions linked.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
