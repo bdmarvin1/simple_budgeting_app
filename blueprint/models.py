@@ -15,6 +15,7 @@ recurring_transaction_projects = db.Table('recurring_transaction_projects',
 )
 
 class Project(db.Model):
+    __bind_key__ = 'budget'
     __tablename__ = 'projects'
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
@@ -32,6 +33,7 @@ class Project(db.Model):
         return f'<Project {self.name}>'
 
 class Transaction(db.Model):
+    __bind_key__ = 'budget'
     __tablename__ = 'transactions'
     id = db.Column(db.Integer, primary_key=True)
     date = db.Column(db.Date, nullable=False, default=datetime.utcnow)
@@ -44,6 +46,7 @@ class Transaction(db.Model):
         return f'<Transaction {self.description} - {self.amount}>'
 
 class RecurringTransaction(db.Model):
+    __bind_key__ = 'budget'
     __tablename__ = 'recurring_transactions'
     id = db.Column(db.Integer, primary_key=True)
     description = db.Column(db.String(255), nullable=False)
@@ -60,6 +63,7 @@ class RecurringTransaction(db.Model):
         return f'<RecurringTransaction {self.description} - {self.amount} ({self.frequency})>'
 
 class TimeEntry(db.Model):
+    __bind_key__ = 'budget'
     __tablename__ = 'time_entries'
     id = db.Column(db.Integer, primary_key=True)
     date = db.Column(db.Date, nullable=False, default=datetime.utcnow)
@@ -71,6 +75,7 @@ class TimeEntry(db.Model):
         return f'<TimeEntry {self.hours}h for Project {self.project_id}>'
 
 class Asset(db.Model):
+    __bind_key__ = 'budget'
     __tablename__ = 'assets'
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
