@@ -19,7 +19,7 @@ from flaskext.markdown import Markdown
 from flask_migrate import Migrate  # Import Migrate
 import json, requests
 import logging
-from blueprint import budget_bp
+from blueprint import budget_bp, db as budget_db
 
 load_dotenv()  # Load environment variables from .env
 
@@ -59,12 +59,9 @@ ROUTES_WITHOUT_CSRF = [
     'budget.save_import', 'budget.add_transaction', 'budget.delete_transaction'
 ]
 
-db = SQLAlchemy(app)
+db = budget_db
+db.init_app(app)
 migrate = Migrate(app, db, directory='mysite/migrations')  # Initialize Migrate
-
-# Initialize budget blueprint's database
-from blueprint import db as budget_db
-budget_db.init_app(app)
 
 app.register_blueprint(budget_bp, url_prefix='/admin/budget')
 
@@ -1334,4 +1331,6 @@ def api_schema():
 
 
 if __name__ == '__main__':
+    with app.app_context():
+        db.create_all()
     app.run(debug=True)
