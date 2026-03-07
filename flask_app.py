@@ -61,6 +61,11 @@ ROUTES_WITHOUT_CSRF = [
 
 db = SQLAlchemy(app)
 migrate = Migrate(app, db, directory='mysite/migrations')  # Initialize Migrate
+
+# Initialize budget blueprint's database
+from blueprint import db as budget_db
+budget_db.init_app(app)
+
 app.register_blueprint(budget_bp, url_prefix='/admin/budget')
 
 class Page(db.Model):

@@ -19,6 +19,12 @@ def login():
         password = request.form.get('password')
         hashed_password = os.environ.get('ADMIN_PASSWORD_HASH')
 
+        # Debug logging (do not log full hash for security)
+        if not hashed_password:
+            current_app.logger.error("ADMIN_PASSWORD_HASH not found in environment variables.")
+        else:
+            current_app.logger.debug(f"ADMIN_PASSWORD_HASH found. Length: {len(hashed_password)}. Starts with: {hashed_password[:10]}...")
+
         if hashed_password and check_password_hash(hashed_password, password):
             session['logged_in'] = True
             return redirect(url_for('budget.dashboard'))
