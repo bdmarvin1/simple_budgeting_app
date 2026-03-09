@@ -3,7 +3,8 @@ from functools import wraps
 from flask import session, redirect, url_for, flash
 from decimal import Decimal
 from datetime import datetime, timedelta
-from .models import Transaction, Project, RecurringTransaction, db
+from extensions import db
+from .models import Transaction, Project, RecurringTransaction
 
 def login_required(f):
     @wraps(f)

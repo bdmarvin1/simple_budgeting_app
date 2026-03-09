@@ -1,7 +1,5 @@
-from flask_sqlalchemy import SQLAlchemy
+from extensions import db
 from datetime import datetime
-
-db = SQLAlchemy()
 
 class Transaction(db.Model):
     __bind_key__ = 'budget'
@@ -13,9 +11,6 @@ class Transaction(db.Model):
     category = db.Column(db.String(100))
     is_pass_through = db.Column(db.Boolean, default=False)
 
-    def __repr__(self):
-        return f'<Transaction {self.description} - {self.amount}>'
-
 class RecurringTransaction(db.Model):
     __bind_key__ = 'budget'
     __tablename__ = 'recurring_transactions'
@@ -23,12 +18,9 @@ class RecurringTransaction(db.Model):
     description = db.Column(db.String(255), nullable=False)
     amount = db.Column(db.Numeric(10, 2), nullable=False)
     category = db.Column(db.String(100))
-    frequency = db.Column(db.String(50), default='MONTHLY')  # MONTHLY, ANNUAL, WEEKLY
+    frequency = db.Column(db.String(50), default='MONTHLY')
     is_pass_through = db.Column(db.Boolean, default=False)
     next_date = db.Column(db.Date, nullable=False, default=datetime.utcnow)
-
-    def __repr__(self):
-        return f'<RecurringTransaction {self.description} - {self.amount} ({self.frequency})>'
 
 class Project(db.Model):
     __bind_key__ = 'budget'
@@ -37,29 +29,31 @@ class Project(db.Model):
     name = db.Column(db.String(100), nullable=False)
     monthly_retainer = db.Column(db.Numeric(10, 2), default=0.0)
     cost_rate = db.Column(db.Numeric(10, 2), default=0.0)
-    status = db.Column(db.String(20), default='ACTIVE')  # ACTIVE, COMPLETED, CANCELLED
+    status = db.Column(db.String(20), default='ACTIVE')
     planned_hours = db.Column(db.Numeric(10, 2), default=0.0)
 
     time_entries = db.relationship('TimeEntry', backref='project', lazy=True)
 
-    def __repr__(self):
-        return f'<Project {self.name}>'
+# Define Association Tables with EXPLICIT metadata
+transaction_projects = db.Table(
+    'transaction_projects',
+    Transaction.metadata,
+    db.Column('transaction_id', db.Integer, db.ForeignKey('transactions.id'), primary_key=True),
+    db.Column('project_id', db.Integer, db.ForeignKey('projects.id'), primary_key=True),
+    info={'bind_key': 'budget'}
+)
 
-class TransactionProject(db.Model):
-    __bind_key__ = 'budget'
-    __tablename__ = 'transaction_projects'
-    transaction_id = db.Column(db.Integer, db.ForeignKey('transactions.id'), primary_key=True)
-    project_id = db.Column(db.Integer, db.ForeignKey('projects.id'), primary_key=True)
+recurring_transaction_projects = db.Table(
+    'recurring_transaction_projects',
+    Transaction.metadata,
+    db.Column('recurring_transaction_id', db.Integer, db.ForeignKey('recurring_transactions.id'), primary_key=True),
+    db.Column('project_id', db.Integer, db.ForeignKey('projects.id'), primary_key=True),
+    info={'bind_key': 'budget'}
+)
 
-class RecurringTransactionProject(db.Model):
-    __bind_key__ = 'budget'
-    __tablename__ = 'recurring_transaction_projects'
-    recurring_transaction_id = db.Column(db.Integer, db.ForeignKey('recurring_transactions.id'), primary_key=True)
-    project_id = db.Column(db.Integer, db.ForeignKey('projects.id'), primary_key=True)
-
-# Define relationships after all models are defined
-Project.transactions = db.relationship('Transaction', secondary=TransactionProject.__table__, backref='projects')
-Project.recurring_transactions = db.relationship('RecurringTransaction', secondary=RecurringTransactionProject.__table__, backref='projects')
+# Late-bind relationships
+Project.transactions = db.relationship('Transaction', secondary=transaction_projects, backref=db.backref('projects', lazy=True))
+Project.recurring_transactions = db.relationship('RecurringTransaction', secondary=recurring_transaction_projects, backref=db.backref('projects', lazy=True))
 
 class TimeEntry(db.Model):
     __bind_key__ = 'budget'
@@ -70,9 +64,6 @@ class TimeEntry(db.Model):
     description = db.Column(db.String(255))
     project_id = db.Column(db.Integer, db.ForeignKey('projects.id'), nullable=False)
 
-    def __repr__(self):
-        return f'<TimeEntry {self.hours}h for Project {self.project_id}>'
-
 class Asset(db.Model):
     __bind_key__ = 'budget'
     __tablename__ = 'assets'
@@ -80,10 +71,3 @@ class Asset(db.Model):
     name = db.Column(db.String(100), nullable=False)
     value = db.Column(db.Numeric(10, 2), nullable=False)
     purchase_date = db.Column(db.Date, nullable=False, default=datetime.utcnow)
-
-    @property
-    def is_taxable_kansas(self):
-        return self.value > 1500
-
-    def __repr__(self):
-        return f'<Asset {self.name} - {self.value}>'

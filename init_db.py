@@ -1,7 +1,8 @@
 from flask import Flask
-from blueprint import db as budget_db
+from extensions import db as budget_db
 import os
 from dotenv import load_dotenv
+import blueprint.models
 
 load_dotenv()
 

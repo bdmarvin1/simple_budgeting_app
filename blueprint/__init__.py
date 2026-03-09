@@ -1,5 +1,5 @@
 from flask import Blueprint
-from .models import db
+from extensions import db
 
 budget_bp = Blueprint(
     'budget',
