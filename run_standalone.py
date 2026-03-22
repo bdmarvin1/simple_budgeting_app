@@ -1,7 +1,9 @@
 import os
 from flask import Flask
 from dotenv import load_dotenv
-from blueprint import budget_bp, db
+from extensions import db
+from blueprint import budget_bp
+import blueprint.models
 
 # Load environment variables from .env
 load_dotenv()

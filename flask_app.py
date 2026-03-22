@@ -8,7 +8,6 @@ import os
 import secrets
 import markdown
 from datetime import datetime
-from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import or_
 import re
 from dotenv import load_dotenv
@@ -19,7 +18,9 @@ from flaskext.markdown import Markdown
 from flask_migrate import Migrate  # Import Migrate
 import json, requests
 import logging
+from extensions import db
 from blueprint import budget_bp
+import blueprint.models # Force budget models registration
 
 load_dotenv()  # Load environment variables from .env
 
@@ -42,6 +43,9 @@ RECEIVER_EMAIL = os.environ.get("RECEIVER_EMAIL")  # Your Gmail address
 
 # Database Configuration (Use environment variables)
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('SQLALCHEMY_DATABASE_URI')
+app.config['SQLALCHEMY_BINDS'] = {
+    'budget': os.environ.get('DATABASE_URL', 'sqlite:///budget.db')
+}
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
     'pool_pre_ping': True,
@@ -59,7 +63,7 @@ ROUTES_WITHOUT_CSRF = [
     'budget.save_import', 'budget.add_transaction', 'budget.delete_transaction'
 ]
 
-db = SQLAlchemy(app)
+db.init_app(app)
 migrate = Migrate(app, db, directory='mysite/migrations')  # Initialize Migrate
 app.register_blueprint(budget_bp, url_prefix='/admin/budget')
 
@@ -1329,4 +1333,7 @@ def api_schema():
 
 
 if __name__ == '__main__':
+    with app.app_context():
+        db.create_all()  # Main DB
+        db.create_all(bind_key='budget')  # Budget DB
     app.run(debug=True)
